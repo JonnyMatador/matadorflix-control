@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MatadorFlix — Master Control</title>
+<meta name="description" content="Betriebs-Dashboard für die MatadorFlix Streaming-Plattform — Signalweg, Rack-Übersicht, Patch Bay und Netzwerk-Schema.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#0a0b0d;
+    --panel:#15171b;
+    --panel-raised:#1b1e23;
+    --line:#282b31;
+    --line-soft:#1e2126;
+    --ink:#eae7de;
+    --dim:#868b93;
+    --dimmer:#565a62;
+    --tally:#e2394c;
+    --tally-dim:rgba(226,57,76,.14);
+    --amber:#e8a53c;
+    --amber-dim:rgba(232,165,60,.14);
+    --ok:#6fae7a;
+    --ok-dim:rgba(111,174,122,.14);
+    --radius:3px;
+    --font-display:'Oswald',sans-serif;
+    --font-body:'Inter',sans-serif;
+    --font-mono:'JetBrains Mono',monospace;
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse 1200px 600px at 50% -10%, #1a1d22 0%, var(--void) 60%),
+      var(--void);
+    color:var(--ink);
+    font-family:var(--font-body);
+    font-size:15px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    background:repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,.012) 0px,
+      rgba(255,255,255,.012) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    z-index:1;
+  }
+  a{color:inherit;}
+  :focus-visible{outline:2px solid var(--tally); outline-offset:2px;}
+
+  .wrap{max-width:1180px; margin:0 auto; padding:0 28px;}
+
+  /* ---------- HEADER ---------- */
+  header{
+    position:sticky; top:0; z-index:20;
+    background:rgba(10,11,13,.88);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .headbar{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:20px; padding:16px 0;
+    flex-wrap:wrap;
+  }
+  .brand{display:flex; align-items:baseline; gap:10px;}
+  .brand .mark{
+    font-family:var(--font-display); font-weight:700; font-size:22px;
+    letter-spacing:.04em; text-transform:uppercase;
+  }
+  .brand .mark span{color:var(--tally);}
+  .brand .sub{
+    font-family:var(--font-mono); font-size:10.5px; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--dim);
+  }
+  .head-right{display:flex; align-items:center; gap:18px; flex-wrap:wrap;}
+  .status-chip{
+    display:flex; align-items:center; gap:8px;
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--ok);
+  }
+  .status-chip .dot{
+    width:7px; height:7px; border-radius:50%; background:var(--ok);
+    box-shadow:0 0 8px var(--ok);
+    animation:blink 2.4s ease-in-out infinite;
+  }
+  .clockbox{font-family:var(--font-mono); font-size:11px; color:var(--dim); text-align:right;}
+  .clockbox b{color:var(--ink); font-size:13px; letter-spacing:.03em;}
+
+  .search{
+    position:relative;
+  }
+  .search input{
+    width:230px; max-width:60vw;
+    background:var(--panel-raised);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    color:var(--ink);
+    font-family:var(--font-mono);
+    font-size:12px;
+    padding:9px 12px 9px 30px;
+  }
+  .search input::placeholder{color:var(--dimmer);}
+  .search svg{position:absolute; left:9px; top:50%; transform:translateY(-50%); opacity:.5;}
+
+  @keyframes blink{0%,100%{opacity:1;}50%{opacity:.35;}}
+
+  /* ---------- HERO ---------- */
+  .hero{padding:52px 0 40px; border-bottom:1px solid var(--line);}
+  .prompt{
+    font-family:var(--font-mono); font-size:12.5px; color:var(--dimmer);
+    margin-bottom:14px;
+  }
+  .prompt .p1{color:var(--ok);}
+  .prompt .p2{color:var(--dim);}
+  h1.hero-title{
+    font-family:var(--font-display); font-weight:600;
+    font-size:clamp(34px, 5.4vw, 54px);
+    text-transform:uppercase; letter-spacing:.01em;
+    margin:0 0 14px; line-height:1.02;
+  }
+  .hero-title em{font-style:normal; color:var(--tally);}
+  .hero-sub{
+    max-width:560px; color:var(--dim); font-size:15px; margin:0 0 26px;
+  }
+  .hero-meta{
+    display:flex; gap:28px; flex-wrap:wrap;
+    font-family:var(--font-mono); font-size:11px; color:var(--dimmer);
+    letter-spacing:.06em; text-transform:uppercase;
+  }
+  .hero-meta b{color:var(--ink); display:block; font-family:var(--font-body); font-size:15px; text-transform:none; letter-spacing:0; margin-top:3px;}
+
+  /* ---------- SIGNAL CHAIN ---------- */
+  .eyebrow{
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.18em;
+    text-transform:uppercase; color:var(--tally); margin:0 0 8px;
+  }
+  section.block{padding:56px 0; border-bottom:1px solid var(--line);}
+  .block h2{
+    font-family:var(--font-display); font-weight:600; font-size:26px;
+    text-transform:uppercase; letter-spacing:.01em; margin:0 0 6px;
+  }
+  .block > p.lead{color:var(--dim); max-width:560px; margin:0 0 36px; font-size:14px;}
+
+  .chain{
+    position:relative;
+    display:grid; grid-template-columns:repeat(4,1fr);
+    gap:14px;
+    margin-bottom:6px;
+  }
+  .chain::before{
+    content:"";
+    position:absolute; top:23px; left:6%; right:6%; height:1px;
+    background:linear-gradient(90deg, var(--line), var(--dimmer), var(--line));
+  }
+  .chain-rail{
+    position:absolute; top:23px; left:6%; width:14px; height:3px; margin-top:-1px;
+    border-radius:2px; background:var(--tally);
+    box-shadow:0 0 10px var(--tally);
+    animation:travel 7s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce){ .chain-rail{ animation:none; opacity:0; } }
+  @keyframes travel{
+    0%{ left:6%; }
+    100%{ left:calc(94% - 14px); }
+  }
+  .node{position:relative; text-align:center;}
+  .node .ring{
+    width:46px; height:46px; border-radius:50%;
+    margin:0 auto 12px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-mono); font-size:10px; color:var(--dim);
+    letter-spacing:.05em;
+    position:relative; z-index:2;
+  }
+  .node:last-child .ring{border-color:var(--tally); color:var(--tally); box-shadow:0 0 14px var(--tally-dim);}
+  .node .label{font-family:var(--font-display); font-size:14px; text-transform:uppercase; letter-spacing:.03em;}
+  .node .sub{font-family:var(--font-mono); font-size:10.5px; color:var(--dimmer); margin-top:3px;}
+
+  /* ---------- RACKS ---------- */
+  .rack{margin-bottom:38px;}
+  .rack:last-child{margin-bottom:0;}
+  .rack-head{
+    display:flex; align-items:baseline; gap:10px;
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--dim);
+    padding-bottom:8px; margin-bottom:14px; border-bottom:1px solid var(--line-soft);
+  }
+  .rack-head .num{color:var(--tally);}
+  .rack-grid{
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(260px,1fr));
+    gap:12px;
+  }
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:16px 16px 14px;
+    transition:border-color .15s ease;
+  }
+  .card:hover{border-color:var(--dimmer);}
+  .card-top{display:flex; align-items:center; gap:9px; margin-bottom:8px;}
+  .led{width:7px; height:7px; border-radius:50%; flex:none;}
+  .led.on{background:var(--ok); box-shadow:0 0 7px var(--ok);}
+  .led.pending{background:var(--amber); box-shadow:0 0 7px var(--amber);}
+  .card-name{font-family:var(--font-mono); font-weight:600; font-size:13px; letter-spacing:.03em; text-transform:uppercase;}
+  .card-role{color:var(--dim); font-size:12.5px; margin:0 0 12px; min-height:32px;}
+  .card-rows{border-top:1px solid var(--line-soft); padding-top:10px; display:flex; flex-direction:column; gap:6px;}
+  .card-row{display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px;}
+  .card-row .k{color:var(--dimmer); font-family:var(--font-mono); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase;}
+  .card-row .v{font-family:var(--font-mono); font-size:12px;}
+  .v.link{color:var(--tally); text-decoration:none; border-bottom:1px dotted var(--tally);}
+  .v.link:hover{color:#ff5d70;}
+  .v.copy{
+    background:none; border:none; color:var(--ink); font-family:var(--font-mono);
+    font-size:12px; cursor:pointer; padding:0; text-align:right;
+  }
+  .v.copy:hover{color:var(--amber);}
+  .v.muted{color:var(--dimmer);}
+  .tag{
+    display:inline-block; margin-top:10px; font-family:var(--font-mono); font-size:10px;
+    letter-spacing:.04em; padding:3px 7px; border-radius:2px;
+    background:var(--amber-dim); color:var(--amber); border:1px solid rgba(232,165,60,.3);
+  }
+  .tag.info{background:var(--panel-raised); color:var(--dim); border-color:var(--line);}
+
+  /* ---------- PATCH BAY ---------- */
+  .patch-table{width:100%; border-collapse:collapse; font-size:13px;}
+  .patch-table thead th{
+    text-align:left; font-family:var(--font-mono); font-size:10.5px; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--dimmer); font-weight:500;
+    padding:0 0 10px; border-bottom:1px solid var(--line);
+  }
+  .patch-table td{
+    padding:12px 14px 12px 0; border-bottom:1px solid var(--line-soft);
+    vertical-align:middle;
+  }
+  .patch-table tr:last-child td{border-bottom:none;}
+  .patch-svc{font-family:var(--font-mono); font-weight:600; letter-spacing:.02em;}
+  .patch-svc .grp{display:block; font-family:var(--font-body); font-weight:400; color:var(--dimmer); font-size:11px; margin-top:2px;}
+  .patch-table td .v{font-family:var(--font-mono); font-size:12.5px;}
+
+  @media (max-width:720px){
+    .patch-table thead{display:none;}
+    .patch-table, .patch-table tbody, .patch-table tr, .patch-table td{display:block; width:100%;}
+    .patch-table tr{border-bottom:1px solid var(--line); padding:12px 0;}
+    .patch-table td{border:none; padding:3px 0;}
+    .patch-table td::before{
+      content:attr(data-label); display:inline-block; width:82px;
+      font-family:var(--font-mono); font-size:10px; color:var(--dimmer); letter-spacing:.06em; text-transform:uppercase;
+    }
+  }
+
+  /* ---------- NETWORK ---------- */
+  .net-grid{display:grid; grid-template-columns:1.1fr .9fr; gap:14px;}
+  @media (max-width:820px){ .net-grid{grid-template-columns:1fr;} }
+  .net-card{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:22px;}
+  .net-card h3{font-family:var(--font-display); font-size:16px; text-transform:uppercase; letter-spacing:.03em; margin:0 0 16px; color:var(--ink);}
+  .kv{display:grid; grid-template-columns:1fr auto; gap:9px 12px; font-size:13px;}
+  .kv .k{color:var(--dim);}
+  .kv .v{font-family:var(--font-mono); text-align:right;}
+  .pill{
+    display:inline-flex; align-items:center; gap:5px;
+    font-family:var(--font-mono); font-size:10.5px; padding:2px 8px; border-radius:20px;
+  }
+  .pill.yes{background:var(--ok-dim); color:var(--ok);}
+  .net-note{color:var(--dim); font-size:13px; line-height:1.6; margin-top:14px; padding-top:14px; border-top:1px solid var(--line-soft);}
+  .net-note b{color:var(--ink); font-weight:600;}
+
+  /* ---------- FOOTER ---------- */
+  footer{padding:36px 0 60px;}
+  .foot-row{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;}
+  .foot-row p{font-family:var(--font-mono); font-size:11px; color:var(--dimmer); margin:0;}
+  .foot-row a{font-family:var(--font-mono); font-size:11px; color:var(--dim); text-decoration:none; border-bottom:1px dotted var(--dimmer);}
+  .foot-row a:hover{color:var(--tally); border-color:var(--tally);}
+
+  /* toast */
+  #toast{
+    position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:var(--panel-raised); border:1px solid var(--line); color:var(--ink);
+    font-family:var(--font-mono); font-size:12px; padding:9px 16px; border-radius:var(--radius);
+    opacity:0; pointer-events:none; transition:all .25s ease; z-index:50;
+  }
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  .hidden{display:none !important;}
+
+  @media (max-width:640px){
+    .wrap{padding:0 18px;}
+    .chain{grid-template-columns:repeat(2,1fr); gap:22px 14px;}
+    .chain::before, .chain-rail{display:none;}
+    .rack-grid{grid-template-columns:1fr;}
+    .headbar{gap:12px;}
+    .search input{width:100%; max-width:none;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap headbar">
+    <div class="brand">
+      <span class="mark">Matador<span>Flix</span></span>
+      <span class="sub">Master&nbsp;Control</span>
+    </div>
+    <div class="head-right">
+      <div class="status-chip"><span class="dot"></span> System online</div>
+      <div class="clockbox"><b id="clock">--:--:--</b><br>Thurgau · CH</div>
+      <div class="search">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input id="searchInput" type="text" placeholder="Modul, IP oder Port suchen…" autocomplete="off">
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- HERO -->
+  <div class="wrap">
+    <section class="hero">
+      <div class="prompt"><span class="p1">jonny@matador</span><span class="p2">:~$</span> ./control --status --live</div>
+      <h1 class="hero-title">Signal <em>läuft.</em><br>Alles im Blick.</h1>
+      <p class="hero-sub">Betriebszentrale der selbstgehosteten Streaming-Plattform — Signalweg, komplette Docker-Stack-Übersicht und alle IP:Port-Zuweisungen an einem Ort. Für den schnellen Zugriff, egal ob zuhause oder unterwegs.</p>
+      <div class="hero-meta">
+        <div>NAS<br><b>QNAP TS-265-8G</b></div>
+        <div>Standort<br><b>Kollegen-Büro · 10 Gbit</b></div>
+        <div>Zugriff extern<br><b>Cloudflare Tunnel + Tailscale</b></div>
+        <div>Stand<br><b>13. August 2026</b></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- SIGNAL CHAIN -->
+  <div class="wrap">
+    <section class="block">
+      <p class="eyebrow">Signalweg</p>
+      <h2>Vom Fund bis zur Sendung</h2>
+      <p class="lead">Jede Anfrage durchläuft dieselbe Kette — von der Indexer-Suche bis zum fertigen Stream in Jellyfin.</p>
+
+      <div class="chain">
+        <div class="chain-rail"></div>
+        <div class="node"><div class="ring">IN 1</div><div class="label">Eingang</div><div class="sub">Prowlarr</div></div>
+        <div class="node"><div class="ring">IN 2</div><div class="label">Erfassung</div><div class="sub">qBittorrent · SABnzbd</div></div>
+        <div class="node"><div class="ring">IN 3</div><div class="label">Aufbereitung</div><div class="sub">Radarr · Sonarr · Bazarr</div></div>
+        <div class="node"><div class="ring">PGM</div><div class="label">Sendung</div><div class="sub">Jellyfin · Jellyseerr</div></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- RACKS -->
+  <div class="wrap">
+    <section class="block">
+      <p class="eyebrow">Rack-Übersicht</p>
+      <h2>Der komplette Docker-Stack</h2>
+      <p class="lead">Alle Container, gruppiert nach ihrer Rolle im Signalweg. Grüne LED = aktiv, Amber = geplant / im Aufbau.</p>
+
+      <!-- RACK 1 -->
+      <div class="rack" data-rack>
+        <div class="rack-head"><span class="num">01</span> Eingang — Indexer &amp; Suche</div>
+        <div class="rack-grid">
+
+          <div class="card" data-search="prowlarr indexer suche 9696">
+            <div class="card-top"><span class="led on"></span><span class="card-name">Prowlarr</span></div>
+            <p class="card-role">Indexer-Aggregator für Radarr &amp; Sonarr, bündelt alle Suchquellen.</p>
+            <div class="card-rows">
+              <div class="card-row"><span class="k">Intern</span><button class="v copy" data-copy="192.168.10.10:9696">192.168.10.10:9696</button></div>
+              <div class="card-row"><span class="k">Extern</span><span class="v muted">— kein externer Zugriff</span></div>
+            </div>
+            <span class="tag info">Priorität 1: RocketHD (DE)</span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- RACK 2 -->
+      <div class="rack" data-rack>
+        <div class="rack-head"><span class="num">02</span> Erfassung — Download &amp; VPN</div>
+        <div class="rack-grid">
+
+          <div class="card" data-search="gluetun vpn protonvpn wireguard 8000">
+            <div class="card-top"><span class="led on"></span><span class="card-name">Gluetun</span></div>
+            <p class="card-role">VPN-Gateway (ProtonVPN, WireGuard) für den gesamten Download-Traffic.</p>
+            <div class="card-rows">
+              <div class="card-row"><span class="k">Control</span><button class="v copy" data-copy="192.168.10.10:8000">192.168.10.10:8000</button></div>
+              <div class="card-row"><span class="k">Extern</span><span class="v muted">— kein externer Zugriff</span></div>
+            </div>
+            <span class="tag info">Kill-Switch aktiv</span>
+          </div>
+
+          <div class="card" data-search="qbittorrent torrent client 8090">
+            <div class="card-top"><span class="led on"></span><span class="card-name">qBittorrent</span></div>
+            <p class="card-role">Torrent-Client, läuft im Netzwerk-Namespace von Gluetun.</p>
+            <div class="card-rows">
+              <div class="card-row"><span class="k">Intern</span><button class="v copy" data-copy="192.168.10.10:8090">192.168.10.10:8090</button></div>
+              <div class="card-row"><span class="k">Extern</span><span class="v muted">— kein externer Zugriff</span></div>
+            </div>
+            <span class="tag info">hinter VPN-Tunnel</span>
+          </div>
+
+          <div class="card" data-search="sabnzbd usenet eweka">
+            <div class="card-top"><span class="led pending"></span><span class="card-name">SABnzbd</span></div>
+            <p class="card-role">Usenet-Client für den Eweka-Provider, ergänzt qBittorrent.</p>
+            <div class="card-rows">
+              <div class="card-row"><span class="k">Intern</span><span class="v muted">noch nicht aktiv</span></div>
+              <div class="card-row"><span class="k">Extern</span><span class="v muted">—</span></div>
+            </div>
+            <span class="tag">in Aufbau</span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- RACK 3 -->
+      <div class="rack" data-rack>
+        <div class="rack-head"><span class="num">03</span> Aufbereitung — Verwaltung &amp; Metadaten</div>
+        <div class="rack-grid">
+
+          <div class="card" data-search="radarr filme movies 7878">
+            <div class="card-top"><span class="led on"></span><span class="card-name">Radarr</span></div>
+            <p class="card-role">Filmverwaltung, Suche und Qualitätsprofile.</p>
+            <div class="card-rows">
+              <div class="card-row"><span class="k">Intern</span><button class="v copy" data-copy="192.168.10.10:7878">192.168.10.10:7878</button></div>
+              <div class="card-row"><span class="k">Extern</span><span class="v muted">— kein externer Zugriff</span></div>
+            </div>
+          </div>
+
+          <div class="card" data-search="sonarr serien anime series 8989">
+            <div class="card-top"><span class="led on"></span><span class="card-name">Sonarr</span></div>
+            <p class="card-role">Serien- und Anime-Verwaltung.</p>
+            <div class="card-rows">
+              <div class="card-row"><span class="k">Intern</span><button class="v copy" data-copy="192.168.10.10:8989">192.168.10.10:8989</button></div>
+              <div class="card-row"><span class="k">Extern</span><span class="v muted">— kein externer Zugriff</span></div>
+            </div>
+          </div>
+
+          <div class="card" data-search="bazarr untertitel subtitles 6767">
+            <div class="card-top"><span class="led on"></span><span class="card-name">Bazarr</span></div>
+            <p class="card-role">Untertitel-Abgleich, Deutsch &amp; Englisch.</p>
+            <div class="card-rows">
+              <div class="card-row"><span class="k">Intern</span><button class="v copy" data-copy="192.168.10.10:6767">192.168.10.10:6767</button></div>
+              <div class="card-row"><span class="k">Extern</span><span class="v muted">— kein externer Zugriff</span></div>
+            </div>
+          </div>
+
+          <div class="card" data-search="flaresolverr cloudflare bypass 8191">
+            <div class="card-top"><span class="led on"></span><span class="card-name">FlareSolverr</span></div>
+            <p class="card-role">Löst Cloudflare-Challenges für geschützte Indexer.</p>
+            <div class="card-rows">
+              <div class="card-row"><span class="k">Intern</span><button class="v copy" data-copy="192.168.10.10:8191">192.168.10.10:8191</button></div>
+              <div class="card-row"><span class="k">Extern</span><span class="v muted">— kein externer Zugriff</span></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- RACK 4 -->
+      <div class="rack" data-rack>
+        <div class="rack-head"><span class="num">PGM</span> Sendung — Streaming &amp; Anfragen</div>
+        <div class="rack-grid">
+
+          <div class="card" data-search="jellyfin streaming stream 8096">
+            <div class="card-top"><span class="led on"></span><span class="card-name">Jellyfin</span></div>
+            <p class="card-role">Streaming-Server, Herzstück der Plattform.</p>
+            <div class="card-rows">
+              <div class="card-row"><span class="k">Intern</span><button class="v copy" data-copy="192.168.10.10:8096">192.168.10.10:8096</button></div>
+              <div class="card-row"><span class="k">Extern</span><a class="v link" href="https://stream.jgiordano.ch" target="_blank" rel="noopener">stream.jgiordano.ch</a></div>
+            </div>
+          </div>
+
+          <div class="card" data-search="jellyseerr seerr anfragen requests 5055">
+            <div class="card-top"><span class="led on"></span><span class="card-name">Jellyseerr</span></div>
+            <p class="card-role">Medienanfragen für Familie &amp; Freunde.</p>
+            <div class="card-rows">
+              <div class="card-row"><span class="k">Intern</span><button class="v copy" data-copy="192.168.10.10:5055">192.168.10.10:5055</button></div>
+              <div class="card-row"><span class="k">Extern</span><a class="v link" href="https://request.jgiordano.ch" target="_blank" rel="noopener">request.jgiordano.ch</a></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- RACK 5 -->
+      <div class="rack" data-rack>
+        <div class="rack-head"><span class="num">05</span> Backbone — Netzwerk &amp; Zugriff</div>
+        <div class="rack-grid">
+
+          <div class="card" data-search="tailscale mesh vpn fernzugriff matadornas">
+            <div class="card-top"><span class="led on"></span><span class="card-name">Tailscale</span></div>
+            <p class="card-role">Mesh-VPN für Fernzugriff — läuft bewusst als eigenständige App, unabhängig vom Media-Stack.</p>
+            <div class="card-rows">
+              <div class="card-row"><span class="k">Hostname</span><button class="v copy" data-copy="matadornas">matadornas</button></div>
+              <div class="card-row"><span class="k">Port</span><span class="v muted">kein klassischer Port (Mesh)</span></div>
+            </div>
+          </div>
+
+          <div class="card" data-search="cloudflared tunnel jgiordano">
+            <div class="card-top"><span class="led on"></span><span class="card-name">Cloudflared</span></div>
+            <p class="card-role">Tunnel „matadorflix" → jgiordano.ch, für Jellyfin &amp; Jellyseerr.</p>
+            <div class="card-rows">
+              <div class="card-row"><span class="k">Tag</span><span class="v">2026.7.3</span></div>
+              <div class="card-row"><span class="k">Port</span><span class="v muted">kein Port (Outbound-Tunnel)</span></div>
+            </div>
+            <span class="tag">bewusst gepinnt</span>
+          </div>
+
+          <div class="card" data-search="unifi router gateway vlan 192.168.10.1">
+            <div class="card-top"><span class="led on"></span><span class="card-name">Unifi Gateway</span></div>
+            <p class="card-role">Netzwerk-Router am Standort, verwaltet VLAN „CueNAS".</p>
+            <div class="card-rows">
+              <div class="card-row"><span class="k">Intern</span><button class="v copy" data-copy="192.168.10.1">192.168.10.1</button></div>
+              <div class="card-row"><span class="k">Extern</span><span class="v muted">via Tailscale Subnet Router</span></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </section>
+  </div>
+
+  <!-- PATCH BAY -->
+  <div class="wrap">
+    <section class="block">
+      <p class="eyebrow">Patch Bay</p>
+      <h2>Schnellzugriff — alle Adressen</h2>
+      <p class="lead">Konsolidierte Liste für den schnellen Blick zwischendurch. Extern anklickbar, intern nur als Info bzw. per Klick kopierbar (Tailscale/VLAN-Zugriff vorausgesetzt).</p>
+
+      <table class="patch-table">
+        <thead>
+          <tr><th>Dienst</th><th>Intern</th><th>Extern</th></tr>
+        </thead>
+        <tbody id="patchBody">
+          <tr data-search="prowlarr"><td data-label="Dienst" class="patch-svc">Prowlarr<span class="grp">Eingang</span></td><td data-label="Intern"><button class="v copy" data-copy="192.168.10.10:9696">192.168.10.10:9696</button></td><td data-label="Extern"><span class="v muted">—</span></td></tr>
+          <tr data-search="gluetun"><td data-label="Dienst" class="patch-svc">Gluetun<span class="grp">Erfassung</span></td><td data-label="Intern"><button class="v copy" data-copy="192.168.10.10:8000">192.168.10.10:8000</button></td><td data-label="Extern"><span class="v muted">—</span></td></tr>
+          <tr data-search="qbittorrent"><td data-label="Dienst" class="patch-svc">qBittorrent<span class="grp">Erfassung</span></td><td data-label="Intern"><button class="v copy" data-copy="192.168.10.10:8090">192.168.10.10:8090</button></td><td data-label="Extern"><span class="v muted">—</span></td></tr>
+          <tr data-search="sabnzbd"><td data-label="Dienst" class="patch-svc">SABnzbd<span class="grp">Erfassung · geplant</span></td><td data-label="Intern"><span class="v muted">—</span></td><td data-label="Extern"><span class="v muted">—</span></td></tr>
+          <tr data-search="radarr"><td data-label="Dienst" class="patch-svc">Radarr<span class="grp">Aufbereitung</span></td><td data-label="Intern"><button class="v copy" data-copy="192.168.10.10:7878">192.168.10.10:7878</button></td><td data-label="Extern"><span class="v muted">—</span></td></tr>
+          <tr data-search="sonarr"><td data-label="Dienst" class="patch-svc">Sonarr<span class="grp">Aufbereitung</span></td><td data-label="Intern"><button class="v copy" data-copy="192.168.10.10:8989">192.168.10.10:8989</button></td><td data-label="Extern"><span class="v muted">—</span></td></tr>
+          <tr data-search="bazarr"><td data-label="Dienst" class="patch-svc">Bazarr<span class="grp">Aufbereitung</span></td><td data-label="Intern"><button class="v copy" data-copy="192.168.10.10:6767">192.168.10.10:6767</button></td><td data-label="Extern"><span class="v muted">—</span></td></tr>
+          <tr data-search="flaresolverr"><td data-label="Dienst" class="patch-svc">FlareSolverr<span class="grp">Aufbereitung</span></td><td data-label="Intern"><button class="v copy" data-copy="192.168.10.10:8191">192.168.10.10:8191</button></td><td data-label="Extern"><span class="v muted">—</span></td></tr>
+          <tr data-search="jellyfin stream"><td data-label="Dienst" class="patch-svc">Jellyfin<span class="grp">Sendung</span></td><td data-label="Intern"><button class="v copy" data-copy="192.168.10.10:8096">192.168.10.10:8096</button></td><td data-label="Extern"><a class="v link" href="https://stream.jgiordano.ch" target="_blank" rel="noopener">stream.jgiordano.ch</a></td></tr>
+          <tr data-search="jellyseerr request"><td data-label="Dienst" class="patch-svc">Jellyseerr<span class="grp">Sendung</span></td><td data-label="Intern"><button class="v copy" data-copy="192.168.10.10:5055">192.168.10.10:5055</button></td><td data-label="Extern"><a class="v link" href="https://request.jgiordano.ch" target="_blank" rel="noopener">request.jgiordano.ch</a></td></tr>
+          <tr data-search="unifi gateway router"><td data-label="Dienst" class="patch-svc">Unifi Gateway<span class="grp">Backbone</span></td><td data-label="Intern"><button class="v copy" data-copy="192.168.10.1">192.168.10.1</button></td><td data-label="Extern"><span class="v muted">via Tailscale</span></td></tr>
+          <tr data-search="tailscale matadornas"><td data-label="Dienst" class="patch-svc">Tailscale<span class="grp">Backbone</span></td><td data-label="Intern"><button class="v copy" data-copy="matadornas">matadornas</button></td><td data-label="Extern"><span class="v muted">Mesh, kein Port</span></td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+
+  <!-- NETWORK -->
+  <div class="wrap">
+    <section class="block" style="border-bottom:none;">
+      <p class="eyebrow">Netzwerk-Schema</p>
+      <h2>VLAN &amp; Anbindung</h2>
+      <p class="lead">Der komplette Stack läuft isoliert im eigenen VLAN am Standort des Kollegen.</p>
+
+      <div class="net-grid">
+        <div class="net-card">
+          <h3>VLAN „CueNAS"</h3>
+          <div class="kv">
+            <span class="k">VLAN-ID</span><span class="v">10</span>
+            <span class="k">Subnet</span><span class="v">192.168.10.0/24</span>
+            <span class="k">Gateway</span><span class="v">192.168.10.1</span>
+            <span class="k">NAS-IP</span><span class="v">192.168.10.10 (statisch)</span>
+            <span class="k">Isolate Network</span><span class="v"><span class="pill yes">● isoliert</span></span>
+            <span class="k">Internet</span><span class="v"><span class="pill yes">● aktiv</span></span>
+          </div>
+          <div class="net-note">Fernzugriff läuft ausschliesslich über <b>Tailscale</b> (Subnet Router, VLAN-weit) und den <b>Cloudflare Tunnel „matadorflix"</b> für Jellyfin &amp; Jellyseerr — keine offenen Ports am Router.</div>
+        </div>
+        <div class="net-card">
+          <h3>Rebranding</h3>
+          <p style="color:var(--dim); font-size:13px; line-height:1.7; margin:0 0 14px;">Umbenennung von <b style="color:var(--ink)">MatadorFlix</b> zu <b style="color:var(--ink)">CueFlix</b> ist beschlossen, aber noch nicht umgesetzt. Betrifft Jellyfin-Servername, Tailscale-Hostname, Branding-Dateien und diese Seite.</p>
+          <span class="tag">zurückgestellt</span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+</main>
+
+<footer>
+  <div class="wrap foot-row">
+    <p>MatadorFlix Master Control · Stand 13.08.2026</p>
+    <a href="https://jonnymatador.github.io/Home-Setup/">← Home Setup</a>
+  </div>
+</footer>
+
+<div id="toast">Kopiert</div>
+
+<script>
+  // Live clock (Europe/Zurich)
+  function tick(){
+    const now = new Date();
+    const s = now.toLocaleTimeString('de-CH', {hour:'2-digit', minute:'2-digit', second:'2-digit', timeZone:'Europe/Zurich'});
+    document.getElementById('clock').textContent = s;
+  }
+  tick(); setInterval(tick, 1000);
+
+  // Copy to clipboard
+  const toast = document.getElementById('toast');
+  let toastTimer;
+  document.querySelectorAll('.v.copy').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const val = btn.getAttribute('data-copy');
+      const done = ()=>{
+        toast.textContent = val + ' kopiert';
+        toast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(()=>toast.classList.remove('show'), 1600);
+      };
+      if(navigator.clipboard && window.isSecureContext){
+        navigator.clipboard.writeText(val).then(done).catch(()=>{});
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = val; document.body.appendChild(ta); ta.select();
+        try{ document.execCommand('copy'); }catch(e){}
+        document.body.removeChild(ta); done();
+      }
+    });
+  });
+
+  // Search / filter across rack cards + patch bay rows
+  const searchInput = document.getElementById('searchInput');
+  const cards = Array.from(document.querySelectorAll('.card[data-search]'));
+  const patchRows = Array.from(document.querySelectorAll('#patchBody tr[data-search]'));
+  const racks = Array.from(document.querySelectorAll('[data-rack]'));
+
+  searchInput.addEventListener('input', ()=>{
+    const q = searchInput.value.trim().toLowerCase();
+
+    cards.forEach(c=>{
+      const match = !q || c.getAttribute('data-search').includes(q) || c.querySelector('.card-name').textContent.toLowerCase().includes(q);
+      c.classList.toggle('hidden', !match);
+    });
+    racks.forEach(r=>{
+      const anyVisible = Array.from(r.querySelectorAll('.card')).some(c=>!c.classList.contains('hidden'));
+      r.classList.toggle('hidden', !anyVisible);
+    });
+    patchRows.forEach(row=>{
+      const match = !q || row.getAttribute('data-search').includes(q);
+      row.classList.toggle('hidden', !match);
+    });
+  });
+</script>
+
+</body>
+</html>
